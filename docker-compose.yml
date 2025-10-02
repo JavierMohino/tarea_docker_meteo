@@ -1,0 +1,28 @@
+services:
+  db:
+    build: ./db
+    container_name: mariadb_weather
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: weatherdb
+      MARIADB_USER: weather
+      MARIADB_PASSWORD: weatherpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  etl:
+    build: ./etl
+    container_name: etl_weather
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: weatherdb
+      DB_USER: weather
+      DB_PASS: weatherpass
+
+volumes:
+  db_data:
