@@ -4,9 +4,9 @@ import datetime as dt
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import create_engine, text
 
-# ---------------- CONFIGURACIÓN ---------------- #
+# CONFIGURACIÓN 
 
-# Conexión a la base de datos (valores de docker-compose.yml)
+# Conexión a la base de datos 
 DB_HOST = os.getenv("DB_HOST", "db")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_NAME = os.getenv("DB_NAME", "weatherdb")
@@ -24,22 +24,19 @@ VARIABLES_DIARIAS = [
     "weathercode"
 ]
 
-# ---------------- FUNCIONES ---------------- #
+# FUNCIONES 
 
-def obtener_motor_bd():
-    """Crea la conexión (engine) a MariaDB usando SQLAlchemy."""
+def obtener_motor_bd():   #Crea la conexión (engine) a MariaDB
     url = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     return create_engine(url, pool_pre_ping=True)
 
-def calcular_rango_ultimos7():
-    """Devuelve las fechas desde hoy-7 hasta hoy-1 (excluye hoy)."""
+def calcular_rango_ultimos7():  #Devuelve las fechas desde hoy-7 hasta hoy-1
     hoy = dt.date.today()
     inicio = hoy - relativedelta(days=7)
     fin = hoy - relativedelta(days=1)
     return inicio, fin
 
-def pedir_datos_openmeteo(inicio, fin):
-    """Llama a la API de Open-Meteo y devuelve la respuesta JSON."""
+def pedir_datos_openmeteo(inicio, fin): #Llama a la API y devuelve la respuesta
     url = (
         f"https://api.open-meteo.com/v1/forecast"
         f"?latitude={LAT}&longitude={LON}"
@@ -51,8 +48,7 @@ def pedir_datos_openmeteo(inicio, fin):
     respuesta.raise_for_status()
     return respuesta.json()
 
-def transformar_respuesta(datos):
-    """Convierte el JSON de Open-Meteo en filas con el formato de nuestra tabla."""
+def transformar_respuesta(datos): #Convierte la respuesta en filas con el formato de nuestra tabla
     diario = datos["daily"]
     filas = []
     for i, fecha in enumerate(diario["time"]):
@@ -65,8 +61,7 @@ def transformar_respuesta(datos):
         })
     return filas
 
-def insertar_filas(motor, filas):
-    """Inserta o actualiza filas en la tabla info_meteorologica."""
+def insertar_filas(motor, filas): #Inserta o actualiza filas en la tabla
     sql = """
     INSERT INTO info_meteorologica (fecha, tmax_c, tmin_c, lluvia_mm, weather_code)
     VALUES (:fecha, :tmax_c, :tmin_c, :lluvia_mm, :weather_code)
@@ -80,42 +75,41 @@ def insertar_filas(motor, filas):
         for fila in filas:
             conn.execute(text(sql), fila)
 
-# ---------------- PROGRAMA PRINCIPAL ---------------- #
+# PROGRAMA PRINCIPAL 
 
 def main():
-    print("🔗 Conectando a la base de datos...")
     print(f"   Host: {DB_HOST}, Puerto: {DB_PORT}, DB: {DB_NAME}")
 
     try:
         motor = obtener_motor_bd()
         with motor.connect() as conn:
             conn.execute(text("SELECT 1"))
-        print("✅ Conexión a la base de datos OK")
+        print("Conexión a la base de datos correcta")
     except Exception as e:
-        print("❌ Error al conectar a la base de datos:", e)
+        print("Error al conectar a la base de datos:", e)
         return
 
     inicio, fin = calcular_rango_ultimos7()
-    print(f"📅 Fechas pedidas a la API: {inicio} → {fin}")
+    print(f"Fechas pedidas a la API: {inicio} → {fin}")
 
     try:
         datos = pedir_datos_openmeteo(inicio.isoformat(), fin.isoformat())
-        print("🌐 API respondió correctamente")
+        print("API respondió correctamente")
         print(str(datos)[:200])  # mostramos los primeros 200 chars del JSON
     except Exception as e:
-        print("❌ Error al llamar a la API:", e)
+        print("Error al llamar a la API:", e)
         return
 
     filas = transformar_respuesta(datos)
-    print(f"📊 Filas a insertar: {len(filas)}")
+    print(f"Filas a insertar: {len(filas)}")
 
     try:
         insertar_filas(motor, filas)
-        print(f"✅ Se insertaron/actualizaron {len(filas)} filas en la tabla info_meteorologica")
+        print(f"Se insertaron/actualizaron {len(filas)} filas en la tabla info_meteorologica")
     except Exception as e:
-        print("❌ Error al insertar filas en la base de datos:", e)
+        print("Error al insertar filas en la base de datos:", e)
 
-# ---------------- EJECUCIÓN ---------------- #
+# EJECUCIÓN 
 
 if __name__ == "__main__":
     main()

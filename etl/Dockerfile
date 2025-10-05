@@ -1,7 +1,7 @@
-# Imagen base oficial de Python
+# Imagen de Python
 FROM python:3.12-slim
 
-# Carpeta de trabajo dentro del contenedor
+# Carpeta dentro del contenedor
 WORKDIR /app
 
 # Copiar dependencias y luego instalarlas
